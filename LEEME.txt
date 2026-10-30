@@ -1,6 +1,6 @@
-VIDEO BACKUP AUTOFIX 1.3 - WINDOWS 11 x64
+VIDEO BACKUP AUTOFIX 1.4 - WINDOWS 11 x64
 
-Abre VideoBackupAutoFix_1_3.exe con doble clic. No necesita instalar Python ni FFmpeg.
+Abre VideoBackupAutoFix_1_4.exe con doble clic. No necesita instalar Python ni FFmpeg.
 El primer arranque puede tardar mientras extrae sus componentes en la carpeta temporal.
 
 1. Inserta el video principal y el video de respaldo.

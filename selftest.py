@@ -67,6 +67,9 @@ def run(app, report_path):
             root.after(250, root.quit); root.mainloop()
             assert not ui_errors, ui_errors
             passed('Apertura, animación y seis espacios de trabajo')
+            ui.show(0); root.update()
+            from PIL import ImageGrab
+            ImageGrab.grab(bbox=(root.winfo_rootx(),root.winfo_rooty(),root.winfo_rootx()+root.winfo_width(),root.winfo_rooty()+root.winfo_height())).save(str(Path(report_path).with_suffix('.png')))
             for count in [0,1,2]:
                 ui.intervals = intervals[:count]
                 out = td / ('reparado%d.mp4' % count)

@@ -4,6 +4,7 @@ from tkinter import ttk, filedialog, messagebox
 import cv2
 import numpy as np
 from PIL import Image, ImageTk
+from rounded_button import RoundedButton
 
 # FFmpeg empaquetado dentro del ejecutable portátil.
 if getattr(sys, 'frozen', False):
@@ -15,7 +16,7 @@ def run_process(args, **kwargs):
     kwargs.setdefault('stdin', subprocess.DEVNULL)
     return subprocess.run(args, **kwargs)
 
-BG='#111111'; PANEL='#202020'; DARK='#292929'; ORANGE='#ff7900'; FG='#f1f1f1'; MUTED='#aaaaaa'
+BG='#121314'; PANEL='#1b1d20'; DARK='#282b30'; ORANGE='#f58a38'; FG='#eceef1'; MUTED='#999fa8'
 
 def ffprobe(path):
     p=run_process(['ffprobe','-v','error','-show_streams','-show_format','-of','json',path],capture_output=True,text=True,check=True)
@@ -109,23 +110,23 @@ def black_intervals(path,rect,meta,threshold=18,black_fraction=.94,padding=.15):
 
 class App:
     def __init__(self,root):
-        self.root=root;root.title('Video Backup AutoFix 1.3');root.geometry('1180x760');root.minsize(930,650);root.configure(bg=BG)
+        self.root=root;root.title('Video Backup AutoFix 1.4');root.geometry('1060x640');root.minsize(960,600);root.configure(bg=BG)
         self.paths=['',''];self.metas=[None,None];self.rects=[None,None];self.offset=tk.DoubleVar(value=0);self.syncmode=tk.StringVar(value='Imagen')
         self.threshold=tk.IntVar(value=18);self.pad=tk.DoubleVar(value=.15);self.lufs=tk.StringVar(value='-16');self.normalize=tk.BooleanVar(value=False)
         self.axis=tk.StringVar(value='Vertical');self.percent=tk.StringVar(value='0');self.output=tk.StringVar(value='');self.intervals=[]
         self.q=queue.Queue();self.busy=False;self.current=0;self.preview_widgets=[]
         style=ttk.Style();style.theme_use('clam');style.configure('TCombobox',fieldbackground=DARK,background=DARK,foreground=FG)
-        head=tk.Frame(root,bg=BG);head.pack(fill='x',padx=18,pady=(14,8))
-        tk.Label(head,text='◉  VIDEO BACKUP AUTOFIX',font=('Segoe UI',17,'bold'),fg=FG,bg=BG).pack(side='left')
-        tk.Label(head,text='1.3',font=('Segoe UI',11),fg=ORANGE,bg=BG).pack(side='left',padx=10)
-        self.tabs=tk.Frame(root,bg=BG);self.tabs.pack(fill='x',padx=18,pady=6)
+        head=tk.Frame(root,bg=BG);head.pack(fill='x',padx=14,pady=(10,5))
+        tk.Label(head,text='Video Backup AutoFix',font=('Segoe UI',12,'normal'),fg=FG,bg=BG).pack(side='left')
+        tk.Label(head,text='1.4',font=('Segoe UI',9),fg=ORANGE,bg=BG).pack(side='left',padx=10)
+        self.tabs=tk.Frame(root,bg=BG);self.tabs.pack(fill='x',padx=12,pady=4)
         names=['1  Insertar vídeos','2  Sincronización','3  Zonas y reparación','4  Nivelación audio','5  Relación de aspecto','6  Exportación']
         self.tab_buttons=[]
         for i,name in enumerate(names):
-            b=tk.Button(self.tabs,text=name,command=lambda i=i:self.show(i),bg=DARK,fg=FG,activebackground=ORANGE,activeforeground='black',relief='flat',padx=12,pady=10,font=('Segoe UI',9))
-            b.pack(side='left',fill='x',expand=True,padx=2);self.tab_buttons.append(b)
-        self.body=tk.Frame(root,bg=BG);self.body.pack(fill='both',expand=True,padx=20,pady=10)
-        foot=tk.Frame(root,bg=BG);foot.pack(fill='x',padx=20,pady=(2,10))
+            b=RoundedButton(self.tabs,text=name,command=lambda i=i:self.show(i),bg=DARK,fg=FG,padx=7,pady=5,font=('Segoe UI',8))
+            b.pack(side='left',fill='x',expand=True,padx=3);self.tab_buttons.append(b)
+        self.body=tk.Frame(root,bg=BG);self.body.pack(fill='both',expand=True,padx=14,pady=8)
+        foot=tk.Frame(root,bg=BG);foot.pack(fill='x',padx=14,pady=(2,7))
         self.status=tk.Label(foot,text='Preparado',fg=MUTED,bg=BG,font=('Segoe UI',9));self.status.pack(side='left')
         tk.Label(foot,text='Desarrollado por',fg=MUTED,bg=BG).pack(side='left',padx=(120,4))
         link=tk.Label(foot,text='Carlos Durán',fg=FG,bg=BG,font=('Segoe UI',9,'bold underline'),cursor='hand2');link.pack(side='left');link.bind('<Button-1>',lambda e:webbrowser.open('https://carlosduran.eu/valcres'))
@@ -135,28 +136,40 @@ class App:
     def animate_ball(self,n):
         self.ball.pack_configure(pady=(0,max(0,int(7+7*math.sin(n/4)))))
         self.root.after(80,lambda:self.animate_ball(n+1))
-    def label(self,parent,text,size=11,color=FG):return tk.Label(parent,text=text,bg=parent['bg'],fg=color,font=('Segoe UI',size),anchor='w')
+    def label(self,parent,text,size=11,color=FG):return tk.Label(parent,text=text,bg=parent['bg'],fg=color,font=('Segoe UI',max(8,size-2)),anchor='w')
     def button(self,parent,text,cmd,accent=False):
-        return tk.Button(parent,text=text,command=cmd,bg=ORANGE if accent else DARK,fg='black' if accent else FG,activebackground='#ff9b3d',relief='flat',padx=16,pady=10,font=('Segoe UI',10,'bold' if accent else 'normal'))
-    def panel(self,parent):return tk.Frame(parent,bg=PANEL,padx=18,pady=16)
-    def entry(self,parent,var,width=15):return tk.Entry(parent,textvariable=var,width=width,bg=DARK,fg=FG,insertbackground=FG,relief='flat',font=('Segoe UI',11))
+        return RoundedButton(parent,text=text,command=cmd,bg=ORANGE if accent else DARK,fg='#17130f' if accent else FG,padx=11,pady=5,font=('Segoe UI',9))
+    def panel(self,parent):return tk.Frame(parent,bg=PANEL,padx=14,pady=12)
+    def entry(self,parent,var,width=15):return tk.Entry(parent,textvariable=var,width=width,bg=DARK,fg=FG,insertbackground=FG,relief='flat',highlightthickness=1,highlightbackground='#34383e',highlightcolor=ORANGE,font=('Segoe UI',9))
     def show(self,i):
         self.current=i
         for n,b in enumerate(self.tab_buttons):b.configure(bg=ORANGE if i==n else DARK,fg='black' if i==n else FG)
         for w in self.body.winfo_children():w.destroy()
         [self.page_files,self.page_sync,self.page_zones,self.page_audio,self.page_aspect,self.page_export][i]()
-    def title(self,text):self.label(self.body,text,17).pack(anchor='w',pady=(0,14))
+    def title(self,text):self.label(self.body,text,15).pack(anchor='w',pady=(2,12))
     def page_files(self):
         self.title('1. Insertar vídeo principal y backup')
+        sources=tk.Frame(self.body,bg=BG);sources.pack(fill='both',expand=True)
         for i,name in enumerate(['Vídeo principal','Vídeo backup']):
-            p=self.panel(self.body);p.pack(fill='x',pady=7)
+            p=self.panel(sources);p.pack(side='left',fill='both',expand=True,padx=4,pady=4)
             self.label(p,name,13).pack(anchor='w')
-            row=tk.Frame(p,bg=PANEL);row.pack(fill='x',pady=8)
+            monitor=tk.Frame(p,bg='#101112',height=160);monitor.pack(fill='both',expand=True,pady=(10,12));monitor.pack_propagate(False)
+            if self.paths[i]:
+                try:
+                    rgb=frame_at(self.paths[i],min(1,self.metas[i]['duration']/2))
+                    img=Image.fromarray(rgb);img.thumbnail((430,240))
+                    photo=ImageTk.PhotoImage(img,master=self.root)
+                    display=tk.Label(monitor,image=photo,bg='#101112');display.image=photo;display.pack(expand=True)
+                except Exception:
+                    self.label(monitor,'Vista previa no disponible',10,MUTED).pack(expand=True)
+            else:
+                self.label(monitor,'Sin vídeo',10,MUTED).pack(expand=True)
+            row=tk.Frame(p,bg=PANEL);row.pack(fill='x',pady=4)
             self.button(row,'Seleccionar vídeo',lambda i=i:self.choose_video(i),True).pack(side='left')
-            self.label(row,os.path.basename(self.paths[i]) or 'Ningún archivo seleccionado',10,MUTED).pack(side='left',padx=15)
+            self.label(p,os.path.basename(self.paths[i]) or 'Ningún archivo seleccionado',10,MUTED).pack(anchor='w',pady=(6,2))
             m=self.metas[i]
             if m:self.label(p,f"{m['width']}×{m['height']}  |  {m['fps']:.2f} fps  |  {m['duration']/60:.1f} min  |  Audio: {'sí' if m['audio'] else 'no'}",10,MUTED).pack(anchor='w')
-        self.button(self.body,'Siguiente: Sincronización →',lambda:self.show(1),True).pack(anchor='e',pady=15)
+        self.button(self.body,'Siguiente: Sincronización →',lambda:self.show(1),True).pack(anchor='e',pady=10)
     def choose_video(self,i):
         p=filedialog.askopenfilename(filetypes=[('Vídeo','*.mp4 *.mov *.mkv *.avi *.m4v'),('Todos','*.*')]);
         if not p:return
@@ -188,8 +201,8 @@ class App:
         p=self.panel(self.body);p.pack(fill='x')
         self.label(p,'Método de sincronización',12).pack(anchor='w',pady=(0,8))
         for mode in ['Audio','Imagen','Manual']:
-            tk.Radiobutton(p,text=mode,variable=self.syncmode,value=mode,bg=PANEL,fg=FG,selectcolor=DARK,activebackground=PANEL,activeforeground=ORANGE,font=('Segoe UI',11)).pack(side='left',padx=15)
-        f=self.panel(self.body);f.pack(fill='x',pady=15)
+            tk.Radiobutton(p,text=mode,variable=self.syncmode,value=mode,bg=PANEL,fg=FG,selectcolor=DARK,activebackground=PANEL,activeforeground=ORANGE,font=('Segoe UI',9)).pack(side='left',padx=15)
+        f=self.panel(self.body);f.pack(fill='x',pady=10)
         self.label(f,'Desfase del backup respecto al principal (segundos):',11).pack(anchor='w')
         self.entry(f,self.offset).pack(anchor='w',pady=9)
         self.label(f,'Tiempo backup = tiempo principal + desfase. Puedes corregir el valor manualmente.',10,MUTED).pack(anchor='w')
@@ -216,7 +229,7 @@ class App:
         self.label(opts,'Margen antes/después (s):').pack(side='left',padx=(20,0));self.entry(opts,self.pad,7).pack(side='left',padx=8)
         self.button(self.body,'Analizar fallos negros',self.analyze,True).pack(anchor='w')
         self.label(self.body,f'Fallos detectados: {len(self.intervals)}',12,ORANGE).pack(anchor='w',pady=10)
-        listbox=tk.Listbox(self.body,bg=PANEL,fg=FG,selectbackground=ORANGE,relief='flat',height=8)
+        listbox=tk.Listbox(self.body,bg=PANEL,fg=FG,selectbackground=ORANGE,relief='flat',height=6)
         listbox.pack(fill='both',expand=True)
         for a,b in self.intervals:listbox.insert('end',f'{a:10.3f} s  —  {b:10.3f} s     ({b-a:.3f} s)')
         self.button(self.body,'Siguiente: Audio →',lambda:self.show(3)).pack(anchor='e',pady=10)
@@ -245,22 +258,22 @@ class App:
     def page_audio(self):
         self.title('4. Nivelación de pista de audio')
         p=self.panel(self.body);p.pack(fill='x')
-        tk.Checkbutton(p,text='Normalizar automáticamente el audio original',variable=self.normalize,bg=PANEL,fg=FG,selectcolor=DARK,activebackground=PANEL,activeforeground=ORANGE,font=('Segoe UI',11)).pack(anchor='w')
+        tk.Checkbutton(p,text='Normalizar automáticamente el audio original',variable=self.normalize,bg=PANEL,fg=FG,selectcolor=DARK,activebackground=PANEL,activeforeground=ORANGE,font=('Segoe UI',9)).pack(anchor='w')
         self.label(p,'Objetivo de sonoridad (LUFS):',11).pack(anchor='w',pady=(15,4));self.entry(p,self.lufs).pack(anchor='w')
         self.label(p,'Se mantiene el audio del vídeo principal. La normalización utiliza FFmpeg loudnorm.',10,MUTED).pack(anchor='w',pady=12)
-        self.button(self.body,'Siguiente: Relación de aspecto →',lambda:self.show(4),True).pack(anchor='e',pady=15)
+        self.button(self.body,'Siguiente: Relación de aspecto →',lambda:self.show(4),True).pack(anchor='e',pady=10)
     def page_aspect(self):
         self.title('5. Relación de aspecto — vídeo final reparado')
         p=self.panel(self.body);p.pack(fill='x')
         self.label(p,'Aplicar al vídeo completo (presentación + sustituciones).',11,MUTED).pack(anchor='w',pady=(0,16))
         row=tk.Frame(p,bg=PANEL);row.pack(anchor='w')
         for mode in ['Horizontal','Vertical']:
-            tk.Radiobutton(row,text=mode,variable=self.axis,value=mode,bg=PANEL,fg=FG,selectcolor=DARK,activebackground=PANEL,activeforeground=ORANGE,font=('Segoe UI',11)).pack(side='left',padx=(0,25))
+            tk.Radiobutton(row,text=mode,variable=self.axis,value=mode,bg=PANEL,fg=FG,selectcolor=DARK,activebackground=PANEL,activeforeground=ORANGE,font=('Segoe UI',9)).pack(side='left',padx=(0,25))
         self.label(p,'Porcentaje (+ estira / − comprime):',11).pack(anchor='w',pady=(15,5))
         self.entry(p,self.percent,10).pack(anchor='w')
-        self.button(p,'Restablecer 0 %',lambda:self.percent.set('0')).pack(anchor='w',pady=15)
+        self.button(p,'Restablecer 0 %',lambda:self.percent.set('0')).pack(anchor='w',pady=10)
         self.label(p,'La deformación se aplica justo antes de exportar; no modifica los archivos originales.',10,MUTED).pack(anchor='w')
-        self.button(self.body,'Siguiente: Exportación →',lambda:self.show(5),True).pack(anchor='e',pady=15)
+        self.button(self.body,'Siguiente: Exportación →',lambda:self.show(5),True).pack(anchor='e',pady=10)
     def page_export(self):
         self.title('6. Exportación — lugar de guardado y nombre')
         p=self.panel(self.body);p.pack(fill='x')
@@ -270,7 +283,7 @@ class App:
         self.button(row,'Examinar…',self.choose_output).pack(side='left',padx=8)
         self.label(p,'Formato: MP4 · H.264 · audio AAC · resolución y fps del principal',10,MUTED).pack(anchor='w',pady=8)
         self.label(p,f'Intervalos para reparar: {len(self.intervals)}',11,ORANGE).pack(anchor='w')
-        self.button(self.body,'Reparar y exportar vídeo',self.export,True).pack(anchor='w',pady=20)
+        self.button(self.body,'Reparar y exportar vídeo',self.export,True).pack(anchor='w',pady=12)
     def choose_output(self):
         p=filedialog.asksaveasfilename(defaultextension='.mp4',filetypes=[('MP4','*.mp4')],initialfile='Evento_Reparado.mp4')
         if p:self.output.set(p)

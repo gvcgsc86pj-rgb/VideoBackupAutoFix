@@ -37,11 +37,11 @@ jobs:
       - name: Pruebas funcionales del proyecto
         run: python app.py --self-test source-test.json
       - name: Compilar EXE autonomo
-        run: python -m PyInstaller --noconfirm --clean --onefile --windowed --name VideoBackupAutoFix_1_3 --collect-all cv2 --add-binary "ffmpeg.exe;." --add-binary "ffprobe.exe;." --add-data "FFMPEG_LICENSE.txt;." --add-data "NOTICE.txt;." app.py
+        run: python -m PyInstaller --noconfirm --clean --onefile --windowed --name VideoBackupAutoFix_1_4 --collect-all cv2 --add-binary "ffmpeg.exe;." --add-binary "ffprobe.exe;." --add-data "FFMPEG_LICENSE.txt;." --add-data "NOTICE.txt;." app.py
       - name: Probar EXE sin Python ni FFmpeg externos en PATH
         shell: pwsh
         run: |
-          $exe = (Resolve-Path dist/VideoBackupAutoFix_1_3.exe).Path
+          $exe = (Resolve-Path dist/VideoBackupAutoFix_1_4.exe).Path
           $report = Join-Path $pwd 'portable-test.json'
           $env:PATH = "$env:SystemRoot\System32;$env:SystemRoot"
           $p = Start-Process $exe -ArgumentList '--self-test', $report -PassThru
@@ -53,9 +53,9 @@ jobs:
       - name: Guardar ejecutable descargable
         uses: actions/upload-artifact@v4
         with:
-          name: VideoBackupAutoFix_1_3_Windows11_Portable
+          name: VideoBackupAutoFix_1_4_Windows11_Portable
           path: |
-            dist/VideoBackupAutoFix_1_3.exe
+            dist/VideoBackupAutoFix_1_4.exe
             LEEME.txt
             NOTICE.txt
             FFMPEG_LICENSE.txt
@@ -69,6 +69,8 @@ jobs:
         with:
           name: comprobaciones
           path: |
+            source-test.png
+            portable-test.png
             source-test.json
             portable-test.json
           if-no-files-found: ignore
