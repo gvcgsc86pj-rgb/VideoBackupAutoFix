@@ -1,0 +1,74 @@
+name: Windows 11 portable
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: windows-2022
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          architecture: x64
+      - name: Instalar dependencias de compilacion
+        run: python -m pip install -r requirements.txt
+      - name: Preparar FFmpeg y licencias
+        shell: pwsh
+        run: |
+          Invoke-WebRequest 'https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip' -OutFile ffmpeg.zip
+          Expand-Archive ffmpeg.zip -DestinationPath ffmpeg_pkg
+          $bin = Get-ChildItem ffmpeg_pkg -Recurse -Filter ffmpeg.exe | Select-Object -First 1
+          if (-not $bin) { throw 'No se encuentra FFmpeg' }
+          Copy-Item $bin.FullName ffmpeg.exe
+          Copy-Item (Join-Path $bin.DirectoryName 'ffprobe.exe') ffprobe.exe
+          $license = Get-ChildItem ffmpeg_pkg -Recurse -Filter LICENSE* | Select-Object -First 1
+          if (-not $license) { throw 'No se encuentra la licencia de FFmpeg' }
+          Copy-Item $license.FullName FFMPEG_LICENSE.txt
+          Add-Content $env:GITHUB_PATH $pwd.Path
+          ./ffmpeg.exe -version | Out-File FFMPEG_BUILD.txt
+          ./ffmpeg.exe -buildconf 2>&1 | Out-File -Append FFMPEG_BUILD.txt
+          Get-FileHash ffmpeg.exe,ffprobe.exe | Format-List | Out-File -Append FFMPEG_BUILD.txt
+      - name: Pruebas funcionales del proyecto
+        run: python app.py --self-test source-test.json
+      - name: Compilar EXE autonomo
+        run: python -m PyInstaller --noconfirm --clean --onefile --windowed --name VideoBackupAutoFix_1_3 --collect-all cv2 --add-binary "ffmpeg.exe;." --add-binary "ffprobe.exe;." --add-data "FFMPEG_LICENSE.txt;." --add-data "NOTICE.txt;." app.py
+      - name: Probar EXE sin Python ni FFmpeg externos en PATH
+        shell: pwsh
+        run: |
+          $exe = (Resolve-Path dist/VideoBackupAutoFix_1_3.exe).Path
+          $report = Join-Path $pwd 'portable-test.json'
+          $env:PATH = "$env:SystemRoot\System32;$env:SystemRoot"
+          $p = Start-Process $exe -ArgumentList '--self-test', $report -PassThru
+          if (-not $p.WaitForExit(300000)) { $p.Kill(); throw 'Tiempo agotado probando el EXE' }
+          if (-not (Test-Path $report)) { throw 'El EXE no genero informe' }
+          Get-Content $report
+          if ($p.ExitCode -ne 0 -or (Get-Content $report -Raw | ConvertFrom-Json).status -ne 'passed') { throw 'Fallo en las pruebas del ejecutable' }
+          Get-FileHash $exe -Algorithm SHA256 | Format-List | Out-File SHA256.txt
+      - name: Guardar ejecutable descargable
+        uses: actions/upload-artifact@v4
+        with:
+          name: VideoBackupAutoFix_1_3_Windows11_Portable
+          path: |
+            dist/VideoBackupAutoFix_1_3.exe
+            LEEME.txt
+            NOTICE.txt
+            FFMPEG_LICENSE.txt
+            FFMPEG_BUILD.txt
+            SHA256.txt
+            portable-test.json
+          if-no-files-found: error
+      - name: Guardar resultados de comprobacion
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: comprobaciones
+          path: |
+            source-test.json
+            portable-test.json
+          if-no-files-found: ignore

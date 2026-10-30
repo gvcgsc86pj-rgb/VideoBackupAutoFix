@@ -1,0 +1,17 @@
+VIDEO BACKUP AUTOFIX 1.3 - WINDOWS 11 x64
+
+Abre VideoBackupAutoFix_1_3.exe con doble clic. No necesita instalar Python ni FFmpeg.
+El primer arranque puede tardar mientras extrae sus componentes en la carpeta temporal.
+
+1. Inserta el video principal y el video de respaldo.
+2. Sincroniza por audio, imagen o introduce el desfase manualmente.
+3. Selecciona la zona que falla en el principal y la zona correspondiente del respaldo.
+   Arrastra el rectangulo y pulsa ENTER. Despues analiza los fallos negros.
+4. Activa la normalizacion de audio si la necesitas.
+5. Ajusta la relacion de aspecto o deja el porcentaje en 0.
+6. Elige donde guardar el MP4 y pulsa Reparar y exportar.
+
+Se conserva el audio del principal. Los archivos de entrada no se modifican.
+La reparacion detecta zonas negras; revisa la sincronizacion antes de exportar.
+Las pruebas automaticas usan videos sinteticos. Todavia no se ha validado con tus grabaciones reales.
+Este ejecutable no tiene firma digital de editor.

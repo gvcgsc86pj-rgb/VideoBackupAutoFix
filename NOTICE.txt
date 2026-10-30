@@ -1,0 +1,10 @@
+Video Backup AutoFix 1.3
+Incluye Python, Tcl/Tk, NumPy, OpenCV, Pillow y FFmpeg/FFprobe.
+FFmpeg se obtiene de https://www.gyan.dev/ffmpeg/builds/ (release essentials).
+Su licencia se incluye en FFMPEG_LICENSE.txt, tanto en el EXE como en el paquete.
+Los detalles y la version exacta de compilacion se adjuntan en FFMPEG_BUILD.txt.
+Codigo fuente de FFmpeg y fuentes de las bibliotecas utilizadas:
+https://www.gyan.dev/ffmpeg/builds/ (apartado Sources; elegir el tag/version del informe)
+https://ffmpeg.org/download.html
+https://github.com/FFmpeg/FFmpeg
+El codigo de esta aplicacion y su proceso de compilacion estan en el repositorio del proyecto.
