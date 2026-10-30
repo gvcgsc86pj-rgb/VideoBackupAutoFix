@@ -46,8 +46,8 @@ def validate(data):
 
 def relative(path, directory):
     if not path:return ''
-    try:return os.path.relpath(os.path.abspath(path),directory)
-    except ValueError:return os.path.abspath(path)
+    try:return os.path.relpath(str(Path(path).resolve()),str(Path(directory).resolve()))
+    except ValueError:return str(Path(path).resolve())
 
 def save_project(path,data):
     path=Path(path).resolve()
