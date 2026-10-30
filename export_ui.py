@@ -55,7 +55,7 @@ class ExportMixin:
         self.play_button=self.button(transport,'Reproducir',self.toggle_preview)
         self.play_button.pack(side='left')
         self.position_label=tk.Label(transport,text=timecode(0),bg=PANEL,fg=FG,font=('Consolas',9));self.position_label.pack(side='left',padx=10)
-        for text,command in [('Marcar inicio [',lambda:self.set_mark('start')),('Marcar fin ]',lambda:self.set_mark('end'))]:
+        for text,command in [('Marcar inicio',lambda:self.set_mark('start')),('Marcar fin',lambda:self.set_mark('end'))]:
             self.button(transport,text,command).pack(side='left',padx=3)
         self.range_label=tk.Label(transport,bg=PANEL,fg=MUTED,font=('Segoe UI',8));self.range_label.pack(side='right')
         marks=tk.Frame(self.body,bg=BG);marks.pack(fill='x',pady=(8,0))
@@ -176,7 +176,7 @@ class ExportMixin:
     def toggle_preview(self):
         if self._playing:self.pause_preview();return
         if not self.metas[0]:return
-        if self.preview_pos.get()>=self.export_end.get():self.scrub_to(self.export_start.get(),immediate=True)
+        if self.preview_pos.get()<self.export_start.get() or self.preview_pos.get()>=self.export_end.get():self.scrub_to(self.export_start.get(),immediate=True)
         self._playing=True;self._play_origin=time.monotonic()-self.preview_pos.get()
         self.play_button.text='Pausar';self.play_button._draw();self.preview_tick()
 

@@ -114,7 +114,7 @@ def black_intervals(path,rect,meta,threshold=18,black_fraction=.94,padding=.15):
 class App(ProjectMixin, ExportMixin):
     probe_video = staticmethod(ffprobe)
     def __init__(self,root):
-        self.root=root;root.title('Video Backup AutoFix 2.0');root.geometry('1060x640+24+24');root.minsize(960,600);root.configure(bg=BG)
+        self.root=root;root.title('Video Backup AutoFix 2.0');root.geometry(f'{min(1060,root.winfo_screenwidth()-48)}x{min(640,root.winfo_screenheight()-100)}+24+24');root.minsize(900,560);root.configure(bg=BG)
         self.paths=['',''];self.metas=[None,None];self.rects=[None,None];self.offset=tk.DoubleVar(value=0);self.syncmode=tk.StringVar(value='Imagen')
         self.threshold=tk.IntVar(value=18);self.pad=tk.DoubleVar(value=.15);self.lufs=tk.StringVar(value='-16');self.normalize=tk.BooleanVar(value=False)
         self.axis=tk.StringVar(value='Vertical');self.percent=tk.StringVar(value='0');self.output=tk.StringVar(value='');self.intervals=[]

@@ -124,17 +124,21 @@ def run(app, report_path):
             ui.axis.set('Horizontal');ui.percent.set('10');ui.output.set(str(td/'salida ñ.mp4'))
             original=ui.project_data();project=td/'Ensayo.toñadas'
             project_io.save_project(project,original)
-            assert project_io.load_project(project)==original
+            expected=dict(original)
+            expected['videos']=[str(Path(p).resolve()) if p else '' for p in original['videos']]
+            expected['export']=dict(original['export'])
+            expected['export']['output']=str(Path(original['export']['output']).resolve())
+            assert project_io.load_project(project)==expected,(project_io.load_project(project),expected)
             ui.offset.set(9);ui.rects=[None,None];ui.intervals=[]
             assert ui.open_project_path(str(project))
-            assert ui.project_data()==original
+            assert ui.project_data()==expected,(ui.project_data(),expected)
             assert not ui.dirty
             ui.offset.set(.5);assert ui.dirty
             import shutil
             moved=td/'trasladado';moved.mkdir()
             for file in [main,backup,project]:shutil.copy2(file,moved/file.name)
             relocated=project_io.load_project(moved/project.name)
-            assert relocated['videos']==[str(moved/main.name),str(moved/backup.name)]
+            assert relocated['videos']==[str((moved/main.name).resolve()),str((moved/backup.name).resolve())]
             invalid=td/'roto.toñadas';invalid.write_text('{"format":"VideoBackupAutoFix","schema_version":99}')
             try:project_io.load_project(invalid)
             except ValueError:pass
