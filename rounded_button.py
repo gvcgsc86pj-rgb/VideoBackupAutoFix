@@ -8,7 +8,7 @@ class RoundedButton(tk.Canvas):
     def __init__(self, parent, text, command, bg, fg, font=('Segoe UI', 10), padx=14, pady=7):
         self.button_bg, self.button_fg = bg, fg
         self.command, self.text = command, text
-        self.button_font = tkfont.Font(master=parent, font=font)
+        self.button_font = tkfont.Font(root=parent, font=font)
         self.hovered = self.pressed = False
         self.radius = float(parent.tk.call('tk', 'scaling')) * 3
         super().__init__(parent, width=self.button_font.measure(text)+padx*2,
