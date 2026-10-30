@@ -1,5 +1,5 @@
-# Video Backup AutoFix 1.4
+# Video Backup AutoFix 2.0
 
-Aplicación portátil para Windows con seis espacios de trabajo y una interfaz compacta de edición, negro y naranja y botones de radio 3 puntos.
+Aplicación portátil de Windows con seis espacios de trabajo. Nueva interfaz oscura y compacta con pestañas subrayadas, paneles con bordes finos y botones redondeados de 3 puntos. Sin balón ni animaciones.
 
-El ejecutable incluye Python y FFmpeg. La compilación verifica el arranque, las seis pantallas y la reparación de vídeos sintéticos, incluida la ejecución sin herramientas externas en PATH.
+Incluye Python y FFmpeg. La compilación automática comprueba las seis pantallas, la estabilidad de la ventana y la reparación y exportación de vídeos sintéticos. También prueba el EXE con PATH limitado a Windows.

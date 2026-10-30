@@ -5,6 +5,7 @@ import cv2
 import numpy as np
 from PIL import Image, ImageTk
 from rounded_button import RoundedButton
+from video_preview import VideoPreview
 
 # FFmpeg empaquetado dentro del ejecutable portátil.
 if getattr(sys, 'frozen', False):
@@ -16,7 +17,7 @@ def run_process(args, **kwargs):
     kwargs.setdefault('stdin', subprocess.DEVNULL)
     return subprocess.run(args, **kwargs)
 
-BG='#121314'; PANEL='#1b1d20'; DARK='#282b30'; ORANGE='#f58a38'; FG='#eceef1'; MUTED='#999fa8'
+BG='#111416'; PANEL='#1a1e21'; DARK='#20252a'; ORANGE='#ff9a3d'; FG='#edf0f3'; MUTED='#9aa6b6'; BORDER='#2c333b'
 
 def ffprobe(path):
     p=run_process(['ffprobe','-v','error','-show_streams','-show_format','-of','json',path],capture_output=True,text=True,check=True)
@@ -110,66 +111,72 @@ def black_intervals(path,rect,meta,threshold=18,black_fraction=.94,padding=.15):
 
 class App:
     def __init__(self,root):
-        self.root=root;root.title('Video Backup AutoFix 1.4');root.geometry('1060x640+24+24');root.minsize(960,600);root.configure(bg=BG)
+        self.root=root;root.title('Video Backup AutoFix 2.0');root.geometry('1060x640+24+24');root.minsize(960,600);root.configure(bg=BG)
         self.paths=['',''];self.metas=[None,None];self.rects=[None,None];self.offset=tk.DoubleVar(value=0);self.syncmode=tk.StringVar(value='Imagen')
         self.threshold=tk.IntVar(value=18);self.pad=tk.DoubleVar(value=.15);self.lufs=tk.StringVar(value='-16');self.normalize=tk.BooleanVar(value=False)
         self.axis=tk.StringVar(value='Vertical');self.percent=tk.StringVar(value='0');self.output=tk.StringVar(value='');self.intervals=[]
         self.q=queue.Queue();self.busy=False;self.current=0;self.preview_widgets=[]
         style=ttk.Style();style.theme_use('clam');style.configure('TCombobox',fieldbackground=DARK,background=DARK,foreground=FG)
-        head=tk.Frame(root,bg=BG);head.pack(fill='x',padx=14,pady=(10,5))
-        tk.Label(head,text='Video Backup AutoFix',font=('Segoe UI',12,'normal'),fg=FG,bg=BG).pack(side='left')
-        tk.Label(head,text='1.4',font=('Segoe UI',9),fg=ORANGE,bg=BG).pack(side='left',padx=10)
-        self.tabs=tk.Frame(root,bg=BG);self.tabs.pack(fill='x',padx=12,pady=4)
+        head=tk.Frame(root,bg=BG);head.pack(fill='x',padx=18,pady=(10,10))
+        tk.Label(head,text='Video Backup AutoFix',font=('Segoe UI',13),fg=FG,bg=BG).pack(side='left')
+        tk.Label(head,text='2.0',font=('Segoe UI',10),fg='#d6a27b',bg=BG).pack(side='left',padx=12)
+        tk.Frame(root,bg=BORDER,height=1).pack(fill='x')
+        self.tabs=tk.Frame(root,bg=BG);self.tabs.pack(fill='x',padx=8,pady=0)
         names=['1  Insertar vídeos','2  Sincronización','3  Zonas y reparación','4  Nivelación audio','5  Relación de aspecto','6  Exportación']
         self.tab_buttons=[]
         for i,name in enumerate(names):
-            b=RoundedButton(self.tabs,text=name,command=lambda i=i:self.show(i),bg=DARK,fg=FG,padx=7,pady=5,font=('Segoe UI',8))
-            b.pack(side='left',fill='x',expand=True,padx=3);self.tab_buttons.append(b)
-        self.body=tk.Frame(root,bg=BG);self.body.pack(fill='both',expand=True,padx=14,pady=8)
-        foot=tk.Frame(root,bg=BG);foot.pack(fill='x',padx=14,pady=(2,7))
-        self.status=tk.Label(foot,text='Preparado',fg=MUTED,bg=BG,font=('Segoe UI',9));self.status.pack(side='left')
-        tk.Label(foot,text='Desarrollado por',fg=MUTED,bg=BG).pack(side='left',padx=(120,4))
-        link=tk.Label(foot,text='Carlos Durán',fg=FG,bg=BG,font=('Segoe UI',9,'bold underline'),cursor='hand2');link.pack(side='left');link.bind('<Button-1>',lambda e:webbrowser.open('https://carlosduran.eu/valcres'))
-        self.ball=tk.Label(foot,text='🏀',fg=ORANGE,bg=BG,font=('Segoe UI Emoji',13));self.ball.pack(side='left',padx=7)
-        self.animate_ball(0);self.show(0);self.root.after(100,self.poll)
+            b=RoundedButton(self.tabs,text=name,command=lambda i=i:self.show(i),bg=BG,fg=MUTED,padx=7,pady=10,font=('Segoe UI',8),variant='tab')
+            b.pack(side='left',fill='x',expand=True);self.tab_buttons.append(b)
+        tk.Frame(root,bg=BORDER,height=1).pack(fill='x')
+        foot=tk.Frame(root,bg=BG,padx=18,pady=10);foot.pack(side='bottom',fill='x')
+        self.status=tk.Label(foot,text='Preparado',fg=MUTED,bg=BG,font=('Segoe UI',8));self.status.pack(side='left')
+        credit=tk.Frame(foot,bg=BG);credit.pack(side='right')
+        tk.Label(credit,text='Desarrollado por',fg=MUTED,bg=BG,font=('Segoe UI',8)).pack(side='left',padx=(0,6))
+        link=tk.Label(credit,text='Carlos Durán',fg=ORANGE,bg=BG,font=('Segoe UI',8,'bold'),cursor='hand2')
+        link.pack(side='left');link.bind('<Button-1>',lambda e:webbrowser.open('https://carlosduran.eu/valcres'))
+        tk.Frame(root,bg=BORDER,height=1).pack(side='bottom',fill='x')
+        self.body=tk.Frame(root,bg=BG);self.body.pack(fill='both',expand=True,padx=18,pady=(14,8))
+        self.show(0);self.root.after(100,self.poll)
 
-    def animate_ball(self,n):
-        self.ball.pack_configure(pady=(0,max(0,int(7+7*math.sin(n/4)))))
-        self.root.after(80,lambda:self.animate_ball(n+1))
     def label(self,parent,text,size=11,color=FG):return tk.Label(parent,text=text,bg=parent['bg'],fg=color,font=('Segoe UI',max(8,size-2)),anchor='w')
     def button(self,parent,text,cmd,accent=False):
-        return RoundedButton(parent,text=text,command=cmd,bg=ORANGE if accent else DARK,fg='#17130f' if accent else FG,padx=11,pady=5,font=('Segoe UI',9))
-    def panel(self,parent):return tk.Frame(parent,bg=PANEL,padx=14,pady=12)
+        return RoundedButton(parent,text=text,command=cmd,bg=ORANGE if accent else PANEL,fg='#17130f' if accent else FG,padx=14,pady=7,font=('Segoe UI',9),outline=None if accent else '#414b56')
+    def panel(self,parent):return tk.Frame(parent,bg=PANEL,padx=12,pady=12,highlightthickness=1,highlightbackground=BORDER)
     def entry(self,parent,var,width=15):return tk.Entry(parent,textvariable=var,width=width,bg=DARK,fg=FG,insertbackground=FG,relief='flat',highlightthickness=1,highlightbackground='#34383e',highlightcolor=ORANGE,font=('Segoe UI',9))
     def show(self,i):
         self.current=i
-        for n,b in enumerate(self.tab_buttons):b.configure(bg=ORANGE if i==n else DARK,fg='black' if i==n else FG)
+        for n,b in enumerate(self.tab_buttons):b.set_active(i==n)
         for w in self.body.winfo_children():w.destroy()
         [self.page_files,self.page_sync,self.page_zones,self.page_audio,self.page_aspect,self.page_export][i]()
-    def title(self,text):self.label(self.body,text,15).pack(anchor='w',pady=(2,12))
+    def title(self,text):
+        clean=text.split('. ',1)[-1] if text[:1].isdigit() else text
+        tk.Label(self.body,text=clean,bg=BG,fg=FG,font=('Segoe UI',15,'bold')).pack(anchor='w',pady=(2,12))
     def page_files(self):
-        self.title('1. Insertar vídeo principal y backup')
+        self.title('Insertar vídeos')
+        tk.Label(self.body,text='Carga la grabación principal y su respaldo.',bg=BG,fg=MUTED,font=('Segoe UI',9)).pack(anchor='w',pady=(0,14))
         sources=tk.Frame(self.body,bg=BG);sources.pack(fill='both',expand=True)
+        sources.grid_rowconfigure(0,weight=1)
         for i,name in enumerate(['Vídeo principal','Vídeo backup']):
-            p=self.panel(sources);p.pack(side='left',fill='both',expand=True,padx=4,pady=4)
-            self.label(p,name,13).pack(anchor='w')
-            monitor=tk.Frame(p,bg='#101112',height=160);monitor.pack(fill='both',expand=True,pady=(10,12));monitor.pack_propagate(False)
+            sources.grid_columnconfigure(i,weight=1,uniform='source')
+            p=self.panel(sources);p.grid(row=0,column=i,sticky='nsew',padx=(0,5) if i==0 else (5,0))
+            tk.Label(p,text=name,bg=PANEL,fg=FG,font=('Segoe UI',11)).pack(anchor='w',pady=(0,10))
+            rgb=None
             if self.paths[i]:
-                try:
-                    rgb=frame_at(self.paths[i],min(1,self.metas[i]['duration']/2))
-                    img=Image.fromarray(rgb);img.thumbnail((430,240))
-                    photo=ImageTk.PhotoImage(img,master=self.root)
-                    display=tk.Label(monitor,image=photo,bg='#101112');display.image=photo;display.pack(expand=True)
-                except Exception:
-                    self.label(monitor,'Vista previa no disponible',10,MUTED).pack(expand=True)
-            else:
-                self.label(monitor,'Sin vídeo',10,MUTED).pack(expand=True)
-            row=tk.Frame(p,bg=PANEL);row.pack(fill='x',pady=4)
-            self.button(row,'Seleccionar vídeo',lambda i=i:self.choose_video(i),True).pack(side='left')
-            self.label(p,os.path.basename(self.paths[i]) or 'Ningún archivo seleccionado',10,MUTED).pack(anchor='w',pady=(6,2))
+                try:rgb=frame_at(self.paths[i],min(1,self.metas[i]['duration']/2))
+                except Exception:pass
+            monitor=VideoPreview(p,rgb);monitor.pack(fill='both',expand=True,pady=(0,12))
+            row=tk.Frame(p,bg=PANEL);row.pack(fill='x')
+            RoundedButton(row,text='Seleccionar vídeo',command=lambda i=i:self.choose_video(i),bg=PANEL,fg=FG,
+                          padx=12,pady=7,font=('Segoe UI',9),outline='#414b56',icon='folder').pack(side='right',padx=(8,0))
+            details=tk.Frame(row,bg=PANEL);details.pack(side='left',fill='both',expand=True)
+            filename=os.path.basename(self.paths[i]) or 'Ningún archivo seleccionado'
+            if len(filename)>30:filename=filename[:27]+'…'
+            tk.Label(details,text=filename,bg=PANEL,fg=FG,font=('Segoe UI',9),anchor='w').pack(fill='x',pady=(1,5))
             m=self.metas[i]
-            if m:self.label(p,f"{m['width']}×{m['height']}  |  {m['fps']:.2f} fps  |  {m['duration']/60:.1f} min  |  Audio: {'sí' if m['audio'] else 'no'}",10,MUTED).pack(anchor='w')
-        self.button(self.body,'Siguiente: Sincronización →',lambda:self.show(1),True).pack(anchor='e',pady=10)
+            info=f"{m['width']} × {m['height']} · {m['fps']:g} fps · {'Audio' if m['audio'] else 'Sin audio'}" if m else 'MP4 · MOV · MKV · AVI'
+            tk.Label(details,text=info,bg=PANEL,fg=MUTED,font=('Segoe UI',8),anchor='w').pack(fill='x')
+        actions=tk.Frame(self.body,bg=BG);actions.pack(fill='x',pady=(14,0))
+        self.button(actions,'Siguiente: Sincronización  →',lambda:self.show(1),True).pack(side='right')
     def choose_video(self,i):
         p=filedialog.askopenfilename(filetypes=[('Vídeo','*.mp4 *.mov *.mkv *.avi *.m4v'),('Todos','*.*')]);
         if not p:return

@@ -62,14 +62,19 @@ def run(app, report_path):
             ui.paths = [str(main),str(backup)]; ui.metas = [mm, mb]
             ui.rects = [(40,40,80,60), (40,40,80,60)]
             for page in range(6):
-                ui.show(page); root.update()
+                ui.tab_buttons[page]._invoke(); root.update()
                 assert ui.current == page and ui.body.winfo_children()
-            root.after(250, root.quit); root.mainloop()
+            assert not hasattr(ui, 'ball')
+            geometry = root.geometry()
+            root.after(350, root.quit); root.mainloop()
+            assert root.geometry() == geometry
             assert not ui_errors, ui_errors
-            passed('Apertura, animación y seis espacios de trabajo')
-            ui.show(0); root.update()
+            passed('Apertura de seis espacios, navegación y ventana estable sin balón ni animaciones')
             from PIL import ImageGrab
-            ImageGrab.grab(bbox=(root.winfo_rootx(),root.winfo_rooty(),root.winfo_rootx()+root.winfo_width(),root.winfo_rooty()+root.winfo_height())).save(str(Path(report_path).with_suffix('.png')))
+            for page in range(6):
+                ui.show(page); root.update()
+                ImageGrab.grab(bbox=(root.winfo_rootx(),root.winfo_rooty(),root.winfo_rootx()+root.winfo_width(),root.winfo_rooty()+root.winfo_height())).save(str(Path(report_path).with_name(Path(report_path).stem+'-page-'+str(page+1)+'.png')))
+            ui.show(0); root.update()
             for count in [0,1,2]:
                 ui.intervals = intervals[:count]
                 out = td / ('reparado%d.mp4' % count)

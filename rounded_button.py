@@ -5,13 +5,15 @@ from PIL import Image, ImageDraw, ImageTk
 
 
 class RoundedButton(tk.Canvas):
-    def __init__(self, parent, text, command, bg, fg, font=('Segoe UI', 10), padx=14, pady=7):
+    def __init__(self, parent, text, command, bg, fg, font=('Segoe UI', 10), padx=14, pady=7, variant='button', outline=None, icon=None):
         self.button_bg, self.button_fg = bg, fg
         self.command, self.text = command, text
+        self.variant, self.outline, self.icon = variant, outline, icon
+        self.active = False
         self.button_font = tkfont.Font(root=parent, font=font)
         self.hovered = self.pressed = False
         self.radius = float(parent.tk.call('tk', 'scaling')) * 3
-        super().__init__(parent, width=self.button_font.measure(text)+padx*2,
+        super().__init__(parent, width=self.button_font.measure(text)+padx*2+(24 if icon else 0),
                          height=self.button_font.metrics('linespace')+pady*2,
                          bg=parent.cget('bg'), highlightthickness=0, borderwidth=0,
                          takefocus=True, cursor='hand2')
@@ -40,6 +42,10 @@ class RoundedButton(tk.Canvas):
 
     config = configure
 
+    def set_active(self, active):
+        self.active = active
+        self._draw()
+
     def _state(self, **kw):
         for key,value in kw.items(): setattr(self,key,value)
         self._draw()
@@ -60,6 +66,16 @@ class RoundedButton(tk.Canvas):
         if not self.winfo_exists(): return
         w,h = self.winfo_width(), self.winfo_height()
         if w < 2 or h < 2: return
+        if self.variant == 'tab':
+            self.delete('all')
+            self.create_line(w-1,7,w-1,h-8,fill='#252a30')
+            self.create_text(w/2,h/2-1,text=self.text,font=self.button_font,
+                             fill='#ff9a3d' if self.active else '#a8b0bc')
+            if self.active:
+                self.create_line(10,h-2,w-10,h-2,fill='#ff9a3d',width=2)
+            if self.focus_get() == self:
+                self.create_rectangle(3,3,w-4,h-5,outline='#57616e')
+            return
         fill = self.button_bg
         if self.hovered or self.pressed:
             rgb = self.winfo_rgb(fill)
@@ -71,8 +87,13 @@ class RoundedButton(tk.Canvas):
         focused = self.focus_get() == self
         draw.rounded_rectangle((scale,scale,(w-1)*scale,(h-1)*scale),
                                radius=self.radius*scale,fill=fill,
-                               outline='#ff943d' if focused else fill,width=scale)
+                               outline='#ff943d' if focused else (self.outline or fill),width=scale)
         self._image = ImageTk.PhotoImage(image.resize((w,h),Image.Resampling.LANCZOS),master=self)
         self.delete('all')
         self.create_image(0,0,anchor='nw',image=self._image)
-        self.create_text(w/2,h/2,text=self.text,fill=self.button_fg,font=self.button_font)
+        text_width = self.button_font.measure(self.text)
+        if self.icon == 'folder':
+            x = (w-text_width-24)/2; y = h/2-6
+            self.create_line(x,y+1,x+6,y+1,x+9,y+4,x+17,y+4,x+17,y+13,x,y+13,x,y+1,
+                             fill='#ff9a3d',width=1.4,joinstyle='round')
+        self.create_text(w/2+(12 if self.icon else 0),h/2,text=self.text,fill=self.button_fg,font=self.button_font)
