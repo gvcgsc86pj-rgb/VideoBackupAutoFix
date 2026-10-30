@@ -21,7 +21,7 @@ jobs:
       - name: Preparar FFmpeg y licencias
         shell: pwsh
         run: |
-          Invoke-WebRequest 'https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip' -OutFile ffmpeg.zip
+          Invoke-WebRequest 'https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip' -OutFile ffmpeg.zip -MaximumRetryCount 3 -RetryIntervalSec 10
           Expand-Archive ffmpeg.zip -DestinationPath ffmpeg_pkg
           $bin = Get-ChildItem ffmpeg_pkg -Recurse -Filter ffmpeg.exe | Select-Object -First 1
           if (-not $bin) { throw 'No se encuentra FFmpeg' }

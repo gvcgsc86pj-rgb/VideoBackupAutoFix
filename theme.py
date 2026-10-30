@@ -1,0 +1,7 @@
+BG='#111416'
+PANEL='#1a1e21'
+DARK='#20252a'
+ORANGE='#ff9a3d'
+FG='#edf0f3'
+MUTED='#9aa6b6'
+BORDER='#2c333b'

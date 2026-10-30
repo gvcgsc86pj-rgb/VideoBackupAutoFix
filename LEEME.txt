@@ -15,3 +15,15 @@ Se conserva el audio del principal. Los archivos de entrada no se modifican.
 La reparacion detecta zonas negras; revisa la sincronizacion antes de exportar.
 Las pruebas automaticas usan videos sinteticos. Todavia no se ha validado con tus grabaciones reales.
 Este ejecutable no tiene firma digital de editor.
+
+PROYECTOS .toñadas
+Al abrir la aplicacion puedes crear un proyecto nuevo o abrir uno guardado.
+Guardar proyecto conserva videos, sincronizacion, zonas, detecciones, audio, aspecto y marcas.
+El proyecto no contiene los videos: conserva tambien las grabaciones originales.
+Si mueves proyecto y videos juntos se mantienen sus referencias relativas. Si faltan, puedes localizarlos.
+
+EXPORTAR UN TRAMO
+En Exportacion, mueve el cursor en la barra de tiempo y pulsa Marcar inicio o Marcar fin.
+Tambien puedes arrastrar las marcas naranjas o introducir los segundos.
+Reproducir muestra la vista previa reparada sin audio. Exportar tramo incluye el audio del principal.
+Video completo restablece inicio y fin.

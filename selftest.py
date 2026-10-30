@@ -59,6 +59,9 @@ def run(app, report_path):
             ui_errors = []
             root.report_callback_exception = lambda *exc: ui_errors.append(str(exc))
             ui = app.App(root)
+            root.update()
+            assert ui.current == -1
+            passed('Pantalla inicial: crear nuevo o abrir proyecto')
             ui.paths = [str(main),str(backup)]; ui.metas = [mm, mb]
             ui.rects = [(40,40,80,60), (40,40,80,60)]
             for page in range(6):
@@ -103,6 +106,54 @@ def run(app, report_path):
                 ui.render(str(out), 0, -16, offset)
                 assert app.frame_at(str(out), 2.5)[60,60,0] > 180
             passed('Exportación con desfase manual positivo y negativo')
+            ui.intervals=intervals;ui.offset.set(0);ui.percent.set('0');ui.normalize.set(False)
+            ui.show(5);root.update()
+            ui.scrub_to(1.5,immediate=True);ui.set_mark('start')
+            ui.scrub_to(8.5,immediate=True);ui.set_mark('end')
+            assert ui.export_start.get()==1.5 and ui.export_end.get()==8.5
+            assert ui.preview_rgb(2.5)[60,60,0]>180
+            assert ui.preview_rgb(1)[60,60,2]>180
+            ui.scrub_to(1.5,immediate=True);ui.toggle_preview()
+            root.after(250,root.quit);root.mainloop()
+            assert ui.preview_pos.get()>1.5
+            ui.show(0);root.update()
+            assert not ui._playing and ui._play_id is None and not ui._preview_caps
+            passed('Visor reparado, reproducción, cursor y marcas de inicio y fin')
+            import project_io
+            ui.syncmode.set('Manual');ui.offset.set(.25);ui.normalize.set(True)
+            ui.axis.set('Horizontal');ui.percent.set('10');ui.output.set(str(td/'salida ñ.mp4'))
+            original=ui.project_data();project=td/'Ensayo.toñadas'
+            project_io.save_project(project,original)
+            assert project_io.load_project(project)==original
+            ui.offset.set(9);ui.rects=[None,None];ui.intervals=[]
+            assert ui.open_project_path(str(project))
+            assert ui.project_data()==original
+            assert not ui.dirty
+            ui.offset.set(.5);assert ui.dirty
+            import shutil
+            moved=td/'trasladado';moved.mkdir()
+            for file in [main,backup,project]:shutil.copy2(file,moved/file.name)
+            relocated=project_io.load_project(moved/project.name)
+            assert relocated['videos']==[str(moved/main.name),str(moved/backup.name)]
+            invalid=td/'roto.toñadas';invalid.write_text('{"format":"VideoBackupAutoFix","schema_version":99}')
+            try:project_io.load_project(invalid)
+            except ValueError:pass
+            else:raise AssertionError('Se aceptó una versión de proyecto desconocida')
+            passed('Proyectos .toñadas UTF-8: ajustes completos, reapertura, cambios pendientes y rutas relativas')
+            ui.offset.set(0);ui.percent.set('0');ui.normalize.set(False)
+            ui.export_start.set(1.5);ui.export_end.set(3.5)
+            trimmed=td/'tramo.mp4'
+            ui.render(str(trimmed),0,-16,0,1.5,3.5)
+            meta=app.ffprobe(str(trimmed))
+            assert abs(meta['duration']-2)<.15 and meta['audio'],meta
+            assert app.frame_at(str(trimmed),1)[60,60,0]>180
+            assert app.frame_at(str(trimmed),.1)[60,60,2]>180
+            passed('Exportación limitada al tramo con vídeo reparado y audio')
+            ui.show(5);root.update()
+            ImageGrab.grab(bbox=(root.winfo_rootx(),root.winfo_rooty(),root.winfo_rootx()+root.winfo_width(),root.winfo_rooty()+root.winfo_height())).save(str(Path(report_path).with_name(Path(report_path).stem+'-page-6.png')))
+            assert not ui_errors,ui_errors
+            ui.stop_preview()
+
         report['status'] = 'passed'
         return_code = 0
     except Exception:

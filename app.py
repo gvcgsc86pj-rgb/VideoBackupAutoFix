@@ -6,6 +6,8 @@ import numpy as np
 from PIL import Image, ImageTk
 from rounded_button import RoundedButton
 from video_preview import VideoPreview
+from project_ui import ProjectMixin
+from export_ui import ExportMixin
 
 # FFmpeg empaquetado dentro del ejecutable portátil.
 if getattr(sys, 'frozen', False):
@@ -109,17 +111,22 @@ def black_intervals(path,rect,meta,threshold=18,black_fraction=.94,padding=.15):
         else:merged.append((a,b))
     return merged
 
-class App:
+class App(ProjectMixin, ExportMixin):
+    probe_video = staticmethod(ffprobe)
     def __init__(self,root):
         self.root=root;root.title('Video Backup AutoFix 2.0');root.geometry('1060x640+24+24');root.minsize(960,600);root.configure(bg=BG)
         self.paths=['',''];self.metas=[None,None];self.rects=[None,None];self.offset=tk.DoubleVar(value=0);self.syncmode=tk.StringVar(value='Imagen')
         self.threshold=tk.IntVar(value=18);self.pad=tk.DoubleVar(value=.15);self.lufs=tk.StringVar(value='-16');self.normalize=tk.BooleanVar(value=False)
         self.axis=tk.StringVar(value='Vertical');self.percent=tk.StringVar(value='0');self.output=tk.StringVar(value='');self.intervals=[]
         self.q=queue.Queue();self.busy=False;self.current=0;self.preview_widgets=[]
+        self.init_export();self.init_project()
         style=ttk.Style();style.theme_use('clam');style.configure('TCombobox',fieldbackground=DARK,background=DARK,foreground=FG)
         head=tk.Frame(root,bg=BG);head.pack(fill='x',padx=18,pady=(10,10))
         tk.Label(head,text='Video Backup AutoFix',font=('Segoe UI',13),fg=FG,bg=BG).pack(side='left')
         tk.Label(head,text='2.0',font=('Segoe UI',10),fg='#d6a27b',bg=BG).pack(side='left',padx=12)
+        tools=tk.Frame(head,bg=BG);tools.pack(side='right')
+        for text,command in [('Nuevo',self.new_project),('Abrir proyecto',self.open_project_dialog),('Guardar proyecto',self.save_project_dialog)]:
+            self.button(tools,text,command).pack(side='left',padx=(6,0))
         tk.Frame(root,bg=BORDER,height=1).pack(fill='x')
         self.tabs=tk.Frame(root,bg=BG);self.tabs.pack(fill='x',padx=8,pady=0)
         names=['1  Insertar vídeos','2  Sincronización','3  Zonas y reparación','4  Nivelación audio','5  Relación de aspecto','6  Exportación']
@@ -136,7 +143,7 @@ class App:
         link.pack(side='left');link.bind('<Button-1>',lambda e:webbrowser.open('https://carlosduran.eu/valcres'))
         tk.Frame(root,bg=BORDER,height=1).pack(side='bottom',fill='x')
         self.body=tk.Frame(root,bg=BG);self.body.pack(fill='both',expand=True,padx=18,pady=(14,8))
-        self.show(0);self.root.after(100,self.poll)
+        self.show_start();self.root.after(100,self.poll)
 
     def label(self,parent,text,size=11,color=FG):return tk.Label(parent,text=text,bg=parent['bg'],fg=color,font=('Segoe UI',max(8,size-2)),anchor='w')
     def button(self,parent,text,cmd,accent=False):
@@ -144,6 +151,7 @@ class App:
     def panel(self,parent):return tk.Frame(parent,bg=PANEL,padx=12,pady=12,highlightthickness=1,highlightbackground=BORDER)
     def entry(self,parent,var,width=15):return tk.Entry(parent,textvariable=var,width=width,bg=DARK,fg=FG,insertbackground=FG,relief='flat',highlightthickness=1,highlightbackground='#34383e',highlightcolor=ORANGE,font=('Segoe UI',9))
     def show(self,i):
+        self.stop_preview()
         self.current=i
         for n,b in enumerate(self.tab_buttons):b.set_active(i==n)
         for w in self.body.winfo_children():w.destroy()
@@ -178,11 +186,14 @@ class App:
         actions=tk.Frame(self.body,bg=BG);actions.pack(fill='x',pady=(14,0))
         self.button(actions,'Siguiente: Sincronización  →',lambda:self.show(1),True).pack(side='right')
     def choose_video(self,i):
+        if self.busy:return
         p=filedialog.askopenfilename(filetypes=[('Vídeo','*.mp4 *.mov *.mkv *.avi *.m4v'),('Todos','*.*')]);
         if not p:return
         try:m=ffprobe(p)
         except Exception as e:messagebox.showerror('Error al leer vídeo',str(e));return
-        self.paths[i]=p;self.metas[i]=m;self.rects[i]=None;self.intervals=[];self.show(self.current)
+        self.paths[i]=p;self.metas[i]=m;self.rects[i]=None;self.intervals=[]
+        if i==0:self.export_start.set(0);self.export_end.set(m['duration']);self.preview_pos.set(0)
+        self.mark_dirty();self.show(max(0,self.current))
     def require(self):
         if not all(self.paths):messagebox.showwarning('Faltan vídeos','Carga el vídeo principal y el backup.');return False
         return True
@@ -241,6 +252,7 @@ class App:
         for a,b in self.intervals:listbox.insert('end',f'{a:10.3f} s  —  {b:10.3f} s     ({b-a:.3f} s)')
         self.button(self.body,'Siguiente: Audio →',lambda:self.show(3)).pack(anchor='e',pady=10)
     def select_roi(self,i):
+        if self.busy:return
         if not self.paths[i]:messagebox.showwarning('Falta vídeo','Primero carga el vídeo.');return
         try:
             rgb=frame_at(self.paths[i],min(5,self.metas[i]['duration']/2));h,w=rgb.shape[:2]
@@ -249,7 +261,7 @@ class App:
             # OpenCV's native rectangle selector supports drag and resize before confirmation.
             box=cv2.selectROI('Arrastra un rectangulo - ENTER para aceptar',cv2.cvtColor(shown,cv2.COLOR_RGB2BGR),False,False)
             cv2.destroyAllWindows()
-            if box[2]>0 and box[3]>0:self.rects[i]=tuple(int(round(v/factor)) for v in box);self.show(2)
+            if box[2]>0 and box[3]>0:self.rects[i]=tuple(int(round(v/factor)) for v in box);self.mark_dirty();self.show(2)
         except Exception as e:messagebox.showerror('Selección',str(e))
     def analyze(self):
         if not self.require():return
@@ -260,7 +272,7 @@ class App:
         except:messagebox.showwarning('Parámetros','Usa un umbral 0–255 y margen 0–5 s.');return
         def job():
             intervals=black_intervals(self.paths[0],self.rects[0],self.metas[0],th,padding=pad)
-            return lambda:(setattr(self,'intervals',intervals),self.show(2),messagebox.showinfo('Análisis terminado',f'{len(intervals)} intervalos detectados'))
+            return lambda:(setattr(self,'intervals',intervals),self.mark_dirty(),self.show(2),messagebox.showinfo('Análisis terminado',f'{len(intervals)} intervalos detectados'))
         self.task(job)
     def page_audio(self):
         self.title('4. Nivelación de pista de audio')
@@ -281,20 +293,11 @@ class App:
         self.button(p,'Restablecer 0 %',lambda:self.percent.set('0')).pack(anchor='w',pady=10)
         self.label(p,'La deformación se aplica justo antes de exportar; no modifica los archivos originales.',10,MUTED).pack(anchor='w')
         self.button(self.body,'Siguiente: Exportación →',lambda:self.show(5),True).pack(anchor='e',pady=10)
-    def page_export(self):
-        self.title('6. Exportación — lugar de guardado y nombre')
-        p=self.panel(self.body);p.pack(fill='x')
-        self.label(p,'Archivo de salida (.mp4)',12).pack(anchor='w')
-        row=tk.Frame(p,bg=PANEL);row.pack(fill='x',pady=10)
-        self.entry(row,self.output,70).pack(side='left',fill='x',expand=True)
-        self.button(row,'Examinar…',self.choose_output).pack(side='left',padx=8)
-        self.label(p,'Formato: MP4 · H.264 · audio AAC · resolución y fps del principal',10,MUTED).pack(anchor='w',pady=8)
-        self.label(p,f'Intervalos para reparar: {len(self.intervals)}',11,ORANGE).pack(anchor='w')
-        self.button(self.body,'Reparar y exportar vídeo',self.export,True).pack(anchor='w',pady=12)
     def choose_output(self):
         p=filedialog.asksaveasfilename(defaultextension='.mp4',filetypes=[('MP4','*.mp4')],initialfile='Evento_Reparado.mp4')
         if p:self.output.set(p)
     def export(self):
+        if self.busy:return
         if not self.require():return
         if not self.rects[0] or not self.rects[1]:messagebox.showwarning('Zonas','Selecciona ambas zonas antes de exportar.');return
         if not self.intervals and not messagebox.askyesno('Sin fallos','No hay fallos detectados. ¿Exportar igualmente?'):return
@@ -306,13 +309,22 @@ class App:
             if not all(math.isfinite(v) for v in (percent,lufs,off)) or percent<=-100 or percent>300:raise ValueError('Porcentaje fuera de rango (-99 a +300).')
             if not -30<=lufs<=-5:raise ValueError('LUFS fuera de rango (-30 a -5).')
             if not os.path.isdir(os.path.dirname(os.path.abspath(dest))):raise ValueError('La carpeta no existe.')
+            start=float(self.export_start.get());end=float(self.export_end.get())
+            if not (math.isfinite(start) and math.isfinite(end) and 0<=start<end<=self.duration()+.001):raise ValueError('Elige un inicio y un final válidos dentro del vídeo.')
+            axis=self.axis.get();normalize=self.normalize.get()
         except Exception as e:messagebox.showerror('Parámetros',str(e));return
+        if os.path.exists(dest) and not messagebox.askyesno('Sobrescribir archivo','El archivo de salida ya existe. ¿Quieres reemplazarlo?'):return
+        self.pause_preview()
         def job():
-            self.render(dest,percent,lufs,off)
+            self.render(dest,percent,lufs,off,start,end,axis,normalize)
             return lambda:messagebox.showinfo('Exportación completada',f'Vídeo guardado en:\n{dest}')
         self.task(job)
-    def render(self,dest,percent,lufs,off):
+    def render(self,dest,percent,lufs,off,start=0,end=None,axis=None,normalize=None):
         m=self.metas[0];x,y,w,h=self.rects[0];bx,by,bw,bh=self.rects[1]
+        end=m['duration'] if end is None else end
+        axis=self.axis.get() if axis is None else axis
+        normalize=self.normalize.get() if normalize is None else normalize
+        if not 0<=start<end<=m['duration']+.001:raise ValueError('Tramo de exportación no válido.')
         # Shift backup by timestamp, clip to main's time axis. Positive off means backup is ahead.
         # PTS of backup output = original backup PTS - offset.
         filters=[f'[1:v]crop={bw}:{bh}:{bx}:{by},scale={w}:{h},setpts=PTS-STARTPTS-({off:.6f})/TB[backup]']
@@ -332,7 +344,7 @@ class App:
         if not self.intervals:filters=[];current='[0:v]'
         factor=1+percent/100
         if abs(percent)>1e-8:
-            if self.axis.get()=='Horizontal':
+            if axis=='Horizontal':
                 nw=max(2,round(m['width']*factor/2)*2);nh=m['height']
             else:
                 nw=m['width'];nh=max(2,round(m['height']*factor/2)*2)
@@ -340,10 +352,10 @@ class App:
         else:filters.append(f'{current}null[vout]')
         cmd=['ffmpeg','-hide_banner','-y','-i',self.paths[0],'-i',self.paths[1],'-filter_complex',';'.join(filters),'-map','[vout]']
         if m['audio']:
-            if self.normalize.get():cmd+=['-af',f'loudnorm=I={lufs}:TP=-1.5:LRA=11']
+            if normalize:cmd+=['-af',f'loudnorm=I={lufs}:TP=-1.5:LRA=11']
             cmd+=['-map','0:a:0','-c:a','aac','-b:a','192k']
         else:cmd+=['-an']
-        cmd+=['-c:v','libx264','-preset','fast','-crf','19','-pix_fmt','yuv420p','-t',str(m['duration']),'-movflags','+faststart',dest]
+        cmd+=['-c:v','libx264','-preset','fast','-crf','19','-pix_fmt','yuv420p','-ss',str(start),'-t',str(end-start),'-movflags','+faststart',dest]
         p=run_process(cmd,capture_output=True,text=True)
         if p.returncode:raise RuntimeError(p.stderr[-3000:])
 
@@ -354,4 +366,7 @@ if __name__=='__main__' and '--self-test' in sys.argv:
 if __name__=='__main__':
     if not shutil.which('ffmpeg') or not shutil.which('ffprobe'):
         root=tk.Tk();root.withdraw();messagebox.showerror('Falta FFmpeg','No se encuentran FFmpeg y FFprobe dentro de la aplicación.');sys.exit(1)
-    root=tk.Tk();App(root);root.mainloop()
+    root=tk.Tk();application=App(root)
+    if len(sys.argv)>1 and sys.argv[1].lower().endswith('.toñadas'):
+        root.after_idle(lambda:application.open_project_path(sys.argv[1]))
+    root.mainloop()
